@@ -1,114 +1,144 @@
-# Lightweight GPIO Library for Raspberry Pi 4B
+# rpi-lab-toolkit
 
-**rpi\_gpio** is a portable, single-header C library designed for low-level GPIO control on the Raspberry Pi 4B. It features a **dual-mode architecture**:
+**rpi-lab-toolkit** is a collection of portable, single-header C libraries designed for embedded systems labs on the Raspberry Pi 4B.
 
-1.  **Host Mode (PC/Fedora):** Simulates GPIO operations by printing logs to the console (Mocking).
-2.  **Target Mode (Raspberry Pi):** Controls physical hardware using direct register access via `/dev/gpiomem`.
+## Modules
 
-## Features
+| File | Description | Features |
+| :--- | :--- | :--- |
+| **`rpi_gpio.h`** | Hardware Abstraction Layer | Direct register access (MMIO), auto-mocking on PC, no root required (`/dev/gpiomem`). |
+| **`simple_timer.h`** | Non-blocking Timing | `CLOCK_MONOTONIC` based, drift-free periodic execution, replaces `sleep()`. |
 
-  * **Zero Dependencies:** No `libgpiod`, `wiringPi`, or `bcm2835` required. Just standard C libraries.
-  * **Direct Memory Access (MMIO):** Uses `mmap` for high-performance register manipulation.
-  * **Safe User-Space Access:** Uses `/dev/gpiomem`, allowing execution without `sudo` (root) privileges.
-  * **Portable:** Compile the same code on your x86_64 and your Raspberry Pi without any changes.
+-----
 
-## Integration
+## Quick Start
 
-This is an **STB-style single-header library**. To use it, you must define the implementation macro in **one** source file before including the header.
+This example demonstrates the power of this toolkit: **Multitasking in a single thread.**
+The LED blinks every 500ms, but the "Sensor" is read every 100ms. No threads, no blocking.
 
-### `main.c` Example
+### `main.c`
 
 ```c
 #include <stdio.h>
-#include <unistd.h> // for sleep
+#include <unistd.h>
 
-// Define this ONLY in one .c file (e.g., main.c)
+// 1. Implement the libraries (only in ONE .c file)
 #define RPI_GPIO_IMPLEMENTATION
 #include "rpi_gpio.h"
 
+#define SIMPLE_TIMER_IMPLEMENTATION
+#include "simple_timer.h"
+
+// Constants
+#define LED_PIN 18
+#define BLINK_INTERVAL 500
+#define SENSOR_INTERVAL 100
+
 int main() {
-    // 1. Initialize the library
+    // --- Setup ---
     if (gpio_init() != 0) {
-        fprintf(stderr, "Failed to initialize GPIO\n");
         return 1;
     }
+    
+    pin_mode(LED_PIN, OUTPUT);
+    
+    // Timer instances
+    simple_timer_t led_timer;
+    simple_timer_t sensor_timer;
+    
+    // Start timers
+    timer_set(&led_timer, BLINK_INTERVAL);
+    timer_set(&sensor_timer, SENSOR_INTERVAL);
 
-    // 2. Setup Pin 18 as Output
-    pin_mode(18, OUTPUT);
+    int led_state = LOW;
+    printf("System started. Press Ctrl+C to exit.\n");
 
-    // 3. Toggle LED
-    for (int i = 0; i < 5; i++) {
-        digital_write(18, HIGH);
-        sleep(1);
-        digital_write(18, LOW);
-        sleep(1);
+    // --- Super Loop ---
+    while (1) {
+        
+        // Task 1: Blink LED (Low Priority)
+        if (timer_expired(&led_timer)) {
+            led_state = !led_state;
+            digital_write(LED_PIN, led_state);
+            printf("[TASK 1] LED toggled to %d\n", led_state);
+            
+            // Restart timer for next cycle
+            timer_set(&led_timer, BLINK_INTERVAL); 
+        }
+
+        // Task 2: Read "Sensors" (High Priority)
+        if (timer_expired(&sensor_timer)) {
+            // Simulate reading a button or sensor
+            // int val = digital_read(BUTTON_PIN);
+            printf("   [TASK 2] Scanning sensors...\n");
+            
+            timer_set(&sensor_timer, SENSOR_INTERVAL);
+        }
+
+        // CPU Idle (prevent 100% CPU usage in simple loops)
+        usleep(100); 
     }
 
-    // 4. Cleanup memory mapping
     gpio_cleanup();
     return 0;
 }
 ```
 
+-----
+
 ## Compilation
 
-### 1\. On x86/x64 PC (Host)
+You can compile this identically on your Host PC and the Target RPi.
 
-The library automatically detects the x86/x64 architecture and switches to **Simulation Mode**.
+**1. On x86_64 Host PC (Simulation Mode):**
 
 ```bash
 gcc main.c -o app
 ./app
 ```
 
-**Output:**
+*Output:*
 
 ```text
-MOCK: gpio_init() called. Simulation mode active.
-Starting blink program on Pin 18...
-MOCK: Pin 18 set to OUTPUT
+MOCK: gpio_init() called...
+System started.
+   [TASK 2] Scanning sensors...
+   [TASK 2] Scanning sensors...
+   [TASK 2] Scanning sensors...
+   [TASK 2] Scanning sensors...
+   [TASK 2] Scanning sensors...
+[TASK 1] LED toggled to 1
 MOCK: Pin 18 set to HIGH
-...
 ```
 
-### 2\. On Raspberry Pi (Target)
-
-The library detects the ARM architecture and switches to **Hardware Mode**.
+**2. On Raspberry Pi (Hardware Mode):**
 
 ```bash
 gcc main.c -o app
 ./app
 ```
 
-**Output:**
+*Output:* The physical LED will blink at 1Hz, while the console prints sensor logs at 10Hz.
 
-```text
-(The LED connected to GPIO 18 starts blinking)
-```
+-----
 
-## API Reference
+## Documentation
 
-| Function | Description |
-| :--- | :--- |
-| `int gpio_init(void)` | Initializes the memory map. Must be called first. Returns 0 on success. |
-| `void gpio_cleanup(void)` | Unmaps memory and closes file descriptors. Call before exiting. |
-| `void pin_mode(int pin, int mode)` | Sets pin direction. Modes: `INPUT` (0) or `OUTPUT` (1). |
-| `void digital_write(int pin, int val)` | Sets pin state. Values: `LOW` (0) or `HIGH` (1). |
-| `int digital_read(int pin)` | Reads current pin level. Returns 0 or 1. |
+### `rpi_gpio.h`
 
-## Important Hardware Notes
+  * **Init:** `gpio_init()`, `gpio_cleanup()`
+  * **Control:** `pin_mode(pin, mode)`, `digital_write(pin, val)`, `digital_read(pin)`
+  * **Note:** Uses `/dev/gpiomem`. Ensure your user is in the `gpio` group.
 
-  * **Pin Numbering:** This library uses **BCM numbering** (GPIO numbers), not physical header pin numbers. (e.g., GPIO 18 is physical pin 12).
-  * **Pull-up/Pull-down Resistors:** This library does **not** configure internal pull-up/pull-down resistors.
-      * *Recommendation:* When using buttons (`INPUT`), always use an external pull-up or pull-down resistor on your breadboard to avoid floating signals.
+### `simple_timer.h`
 
-## Troubleshooting
+  * **Types:** `simple_timer_t`
+  * **Control:** `timer_set(&t, ms)`, `timer_expired(&t)`
+  * **Utils:** `millis()`
+  * **Note:** Uses `CLOCK_MONOTONIC` to prevent issues when the system clock updates via NTP/WiFi.
 
-**Error: `Can't open /dev/gpiomem: Permission denied`**
+-----
 
-  * Ensure your user is in the `gpio` group (`sudo usermod -aG gpio $USER`).
-  * Try running with `sudo ./app` (though usually not required).
+## ⚖️ License
 
-**Linker Error: `undefined reference to 'gpio_init'`**
-
-  * You forgot to add `#define RPI_GPIO_IMPLEMENTATION` before `#include "rpi_gpio.h"` in your `main.c`.
+MIT License - Feel free to use this in your university projects.
