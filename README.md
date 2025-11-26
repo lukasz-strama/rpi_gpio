@@ -16,6 +16,11 @@
 This example demonstrates the power of this toolkit: **Multitasking in a single thread.**
 The LED blinks every 500ms, but the "Sensor" is read every 100ms. No threads, no blocking.
 
+```bash
+wget https://raw.githubusercontent.com/lukasz-strama/rpi-toolkit/main/rpi_gpio.h
+wget https://raw.githubusercontent.com/lukasz-strama/rpi-toolkit/main/simple_timer.h
+```
+
 ### `main.c`
 
 ```c
