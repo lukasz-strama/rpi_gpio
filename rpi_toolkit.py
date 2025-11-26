@@ -15,6 +15,12 @@ INPUT = 0
 OUTPUT = 1
 LOW = 0
 HIGH = 1
+ALT0 = 4
+ALT1 = 5
+ALT2 = 6
+ALT3 = 7
+ALT4 = 3
+ALT5 = 2
 
 # Type Definitions
 class SimpleTimer(ctypes.Structure):
@@ -36,6 +42,10 @@ _lib.gpio_cleanup.restype = None
 # void pin_mode(int pin, int mode);
 _lib.pin_mode.argtypes = [ctypes.c_int, ctypes.c_int]
 _lib.pin_mode.restype = None
+
+# void gpio_set_function(int pin, int function);
+_lib.gpio_set_function.argtypes = [ctypes.c_int, ctypes.c_int]
+_lib.gpio_set_function.restype = None
 
 # void digital_write(int pin, int value);
 _lib.digital_write.argtypes = [ctypes.c_int, ctypes.c_int]
@@ -81,6 +91,18 @@ _lib.pwm_write.restype = None
 _lib.pwm_stop.argtypes = [ctypes.c_int]
 _lib.pwm_stop.restype = None
 
+# int hpwm_init(void);
+_lib.hpwm_init.argtypes = []
+_lib.hpwm_init.restype = ctypes.c_int
+
+# void hpwm_set(int pin, int freq_hz, int duty_per_mille);
+_lib.hpwm_set.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_int]
+_lib.hpwm_set.restype = None
+
+# void hpwm_stop(void);
+_lib.hpwm_stop.argtypes = []
+_lib.hpwm_stop.restype = None
+
 
 # Python Wrapper Functions
 
@@ -92,6 +114,9 @@ def gpio_cleanup():
 
 def pin_mode(pin, mode):
     _lib.pin_mode(pin, mode)
+
+def gpio_set_function(pin, function):
+    _lib.gpio_set_function(pin, function)
 
 def digital_write(pin, value):
     _lib.digital_write(pin, value)
@@ -125,3 +150,13 @@ def pwm_write(pin, duty):
 
 def pwm_stop(pin):
     _lib.pwm_stop(pin)
+
+def hpwm_init():
+    return _lib.hpwm_init()
+
+def hpwm_set(pin, freq_hz, duty_per_mille):
+    _lib.hpwm_set(pin, freq_hz, duty_per_mille)
+
+def hpwm_stop():
+    _lib.hpwm_stop()
+

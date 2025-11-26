@@ -13,3 +13,7 @@
 
 #define RPI_PWM_IMPLEMENTATION
 #include "rpi_pwm.h"
+
+#define RPI_HW_PWM_IMPLEMENTATION
+#include "rpi_hw_pwm.h"
+

@@ -3,6 +3,7 @@ import sys
 from rpi_toolkit import (
     gpio_init, gpio_cleanup, pin_mode, digital_write, 
     timer_set, timer_tick, millis, pwm_init, pwm_write, pwm_stop,
+    hpwm_init, hpwm_set, hpwm_stop,
     SimpleTimer, OUTPUT, HIGH, LOW
 )
 
@@ -13,14 +14,22 @@ def main():
 
     led_pin = 21
     pwm_pin = 18
+    hw_pwm_pin = 12
 
     print(f"Starting Python GPIO Blink on Pin {led_pin}...")
-    print(f"Starting Python PWM on Pin {pwm_pin}...")
+    print(f"Starting Python Software PWM on Pin {pwm_pin}...")
+    print(f"Starting Python Hardware PWM on Pin {hw_pwm_pin}...")
 
     pin_mode(led_pin, OUTPUT)
 
     if pwm_init(pwm_pin) != 0:
         print("Failed to init PWM", file=sys.stderr)
+
+    if hpwm_init() != 0:
+        print("Failed to init HW PWM", file=sys.stderr)
+
+    # Set HW PWM to 50Hz (Servo), 7.5% duty (Neutral)
+    hpwm_set(hw_pwm_pin, 50, 75)
 
     blink_timer = SimpleTimer()
     sensor_timer = SimpleTimer()
@@ -52,11 +61,15 @@ def main():
             if pwm_duty > 100:
                 pwm_duty = 0
             pwm_write(pwm_pin, pwm_duty)
+            
+            # Update HW PWM as well (just for demo)
+            hpwm_set(hw_pwm_pin, 50, pwm_duty * 10) # Scale 0-100 to 0-1000
 
         # minimal sleep to prevent CPU hogging
         time.sleep(0.001)
 
     pwm_stop(pwm_pin)
+    hpwm_stop()
     gpio_cleanup()
     print("Done.")
     return 0
