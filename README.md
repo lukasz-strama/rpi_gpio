@@ -10,7 +10,7 @@ It includes a Python wrapper for scripting.
 | **`rpi_gpio.h`** | Hardware Abstraction Layer | Direct register access (MMIO), auto-mocking on PC, no root required (`/dev/gpiomem`). |
 | **`simple_timer.h`** | Timing & Delays | `CLOCK_MONOTONIC` based, drift-free periodic execution, plus microsecond precision for sensors. |
 | **`rpi_pwm.h`** | Software PWM | Multi-threaded PWM generation on any GPIO pin. Replaces `softPwm` from WiringPi. |
-| **`rpi_hw_pwm.h`** | Hardware PWM | **New!** Jitter-free DMA-based PWM using `/dev/mem`. Requires root (`sudo`). |
+| **`rpi_hw_pwm.h`** | Hardware PWM | Jitter-free DMA-based PWM using `/dev/mem`. Requires root (`sudo`). |
 | **`rpi_toolkit.py`**| Python Wrapper | `ctypes` binding to use all above C libraries directly in Python. |
 
 ---
