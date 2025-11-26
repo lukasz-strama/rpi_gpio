@@ -10,6 +10,7 @@ It includes a Python wrapper for scripting.
 | **`rpi_gpio.h`** | Hardware Abstraction Layer | Direct register access (MMIO), auto-mocking on PC, no root required (`/dev/gpiomem`). |
 | **`simple_timer.h`** | Timing & Delays | `CLOCK_MONOTONIC` based, drift-free periodic execution, plus microsecond precision for sensors. |
 | **`rpi_pwm.h`** | Software PWM | Multi-threaded PWM generation on any GPIO pin. Replaces `softPwm` from WiringPi. |
+| **`rpi_hw_pwm.h`** | Hardware PWM | **New!** Jitter-free DMA-based PWM using `/dev/mem`. Requires root (`sudo`). |
 | **`rpi_toolkit.py`**| Python Wrapper | `ctypes` binding to use all above C libraries directly in Python. |
 
 ---
@@ -32,10 +33,14 @@ This example demonstrates multitasking: blinking an LED, reading sensors, and pu
 #define RPI_PWM_IMPLEMENTATION
 #include "rpi_pwm.h"
 
+// Define this if you need Hardware PWM (Requires sudo)
+// #define RPI_HW_PWM_IMPLEMENTATION
+// #include "rpi_hw_pwm.h"
+
 int main() {
     // Setup
     gpio_init();
-    pwm_init(18); // Start PWM on Pin 18 (e.g., LED or Servo)
+    pwm_init(18); // Start Software PWM on Pin 18
 
     printf("System started. Press Ctrl+C to exit.\n");
 
@@ -67,6 +72,7 @@ Since `rpi_pwm.h` uses threads, you must link with the `pthread` library.
 gcc main.c -o app -pthread
 ./app
 ```
+
 Output:
 
 ```Plaintext
@@ -76,28 +82,32 @@ MOCK: PWM on Pin 18 updated to 5%
 ...
 ```
 
-### 2. On Raspberry Pi (Hardware Mode):
+2. On Raspberry Pi (Hardware Mode):
 
 ```Bash
 gcc main.c -o app -pthread
 ./app
 ```
 
+(Note: If using `rpi_hw_pwm.h`, run with `sudo ./app`)
+
 ## Python Support
 
-You can use these libraries in Python thanks to the included `ctypes` wrapper. This gives you the syntax of Python with the performance of C (PWM runs in a background C thread).
+You can use these libraries in Python thanks to the included ctypes wrapper. This gives you the syntax of Python with the performance of C.
 
-### Build the Shared Library
+### 1. Build the Shared Library
 
 ```Bash
 make
 ```
 
-### Run the test Python Script
+### 2. Run the Python Script
 
 ```Bash
 python3 main.py
 ```
+
+(Note: If using `hpwm_*` functions, run `sudo python3 main.py`)
 
 ## API Reference
 
@@ -113,7 +123,7 @@ micros(): Returns uptime in microseconds.
 delay_us(us): precise delay (busy-wait) for timing-critical protocols.
 ```
 
-rpi_pwm.h
+rpi_pwm.h (Software PWM)
 
 ```
 pwm_init(pin): Starts a background thread for PWM on selected pin.
@@ -123,13 +133,21 @@ pwm_write(pin, duty): Sets duty cycle (0-100).
 pwm_stop(pin): Stops the thread and cleans up.
 ```
 
+rpi_hw_pwm.h (Hardware PWM)
+
+```
+hpwm_init(): Initializes DMA/Clock for jitter-free PWM.
+
+hpwm_set(pin, freq, duty_permille): Sets frequency (Hz) and duty (0-1000).
+
+hpwm_stop(): Disables controller.
+```
+
 rpi_gpio.h
 
 ```
 pin_mode(pin, mode), digital_write(pin, val), digital_read(pin).
 ```
-
----
 
 ## GPIO Pinout Reference (BCM vs Physical)
 
