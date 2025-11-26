@@ -133,8 +133,6 @@ pin_mode(pin, mode), digital_write(pin, val), digital_read(pin).
 
 ## GPIO Pinout Reference (BCM vs Physical)
 
-Your code uses **BCM** numbers (Green column).
-
 | BCM (Code) | Role        | Phy |   | Phy | Role        | BCM (Code) |
 | :---:      | :---        | :---: |---| :---: | :---        | :---:      |
 | **-** | **3.3V** |  1  | . |  2  | **5V** | **-** |
