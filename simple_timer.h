@@ -32,6 +32,8 @@ void timer_set(simple_timer_t* t, uint64_t interval_ms);
 bool timer_expired(simple_timer_t* t);
 bool timer_tick(simple_timer_t* t);
 uint64_t millis(void);
+uint64_t micros(void);
+void delay_us(uint64_t us);
 
 #ifdef __cplusplus
 }
@@ -47,6 +49,19 @@ uint64_t millis(void) {
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
     return (uint64_t)(ts.tv_sec * 1000) + (uint64_t)(ts.tv_nsec / 1000000);
+}
+
+uint64_t micros(void) {
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return (uint64_t)(ts.tv_sec * 1000000) + (uint64_t)(ts.tv_nsec / 1000);
+}
+
+void delay_us(uint64_t us) {
+    uint64_t start = micros();
+    while (micros() - start < us) {
+        // Busy wait
+    }
 }
 
 void timer_set(simple_timer_t* t, uint64_t interval_ms) {
